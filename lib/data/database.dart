@@ -10,7 +10,7 @@ part 'database.g.dart';
 
 
 @DriftDatabase(tables: [User], daos: [UserDao])
-abstract class MyDatabase extends _$MyDatabase {
+class MyDatabase extends _$MyDatabase {
   // we tell the database where to store the data with this constructor
   MyDatabase() : super(_openConnection());
 
@@ -19,6 +19,7 @@ abstract class MyDatabase extends _$MyDatabase {
   @override
   int get schemaVersion => 1;
 
+  @override
   UserDao get userDao;
 }
 
