@@ -1,46 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:taskapp/UI/screens/register.dart';
 import 'package:gap/gap.dart';
-import 'package:provider/provider.dart';
-import '../../data/database.dart';
+import 'package:taskapp/UI/screens/register.dart';
 import 'homepage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
 
   @override
-  State<Login> createState()=> _LoginState();
+  State<Login> createState() => _LoginState();
 }
-class UserType{
+
+class UserType {
   String email;
   String password;
 
   UserType({required this.email, required this.password});
 }
+
 class _LoginState extends State<Login> {
   final formKey = GlobalKey<FormBuilderState>();
   UserType user = UserType(email: '', password: '');
 
-  void _login(BuildContext context) async {
+  final storage = new FlutterSecureStorage();
+
+  Future<void> _login(BuildContext context) async {
     if (formKey.currentState!.saveAndValidate()) {
       String email = formKey.currentState!.fields['email']!.value.toString();
-      String password = formKey.currentState!.fields['password']!.value.toString();
+      String password =
+          formKey.currentState!.fields['password']!.value.toString();
 
       UserType userObj = UserType(email: email, password: password);
-      UserData? userData = await Provider.of<MyDatabase>(context, listen: false)
-          .userDao
-          .findUserByEmail(userObj.email);
 
-      if (userData != null && userData.password == userObj.password) {
+      // Construir o corpo da requisição
+      var requestBody = json.encode({
+        'email': userObj.email,
+        'password': userObj.password,
+      });
+
+      var headers = {'Content-Type': 'application/json'};
+
+      // Enviar a requisição para a API backend
+      var response = await http.post(
+        Uri.parse('http://localhost:3333/login'),
+        headers: headers,
+        body: requestBody,
+      );
+      print(response.statusCode);
+
+      if (response.statusCode == 200) {
+        var responseData = json.decode(response.body);
+        String userId = responseData['id'].toString();
+
+        // Armazenar o ID do usuário com a biblioteca flutter_secure_storage
+        await storage.write(key: 'userId', value: userId);
+
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => HomeScreen()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Credenciais inválidas. Verifique seu email e senha.'),
+            content: Text("Invalid email or password"),
             backgroundColor: Colors.red,
           ),
         );
@@ -85,7 +110,9 @@ class _LoginState extends State<Login> {
                       ),
                       FormBuilderTextField(
                         name: 'password',
-                        decoration: const InputDecoration(labelText: 'Password'),
+                        obscureText: true,
+                        decoration:
+                            const InputDecoration(labelText: 'Password'),
                         onChanged: (value) {
                           setState(() {
                             user.password = value!;
@@ -124,4 +151,3 @@ class _LoginState extends State<Login> {
     );
   }
 }
-
